@@ -25,7 +25,7 @@ def map2json(ids,filename='map.json'):
     output['nodes'] = []
     key2ind = []
     for key in ids.keys():
-        output['nodes'].append({'name':str(key),'group':(ids[key]['level']+1)})
+        output['nodes'].append({'name':str(key),'group':(ids[key]['level']+1),'url':'http://www.ncbi.nlm.nih.gov/pubmed/'+str(key)})
         key2ind.append(key)
 
     # build links        
