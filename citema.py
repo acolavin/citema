@@ -62,7 +62,7 @@ def getIDs(pmid):
     # find the PMID field
     xmlroot = ET.parse(filename).getroot()
     PMIDs = []
-    for curid in xmlroot.iter('PMID'):
+    for curid in xmlroot.getiterator('PMID'):
         PMIDs.append(int(curid.text))
     killfile(filename)
 
