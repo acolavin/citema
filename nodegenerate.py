@@ -51,7 +51,7 @@ var svg = d3.select("body").append("svg")
     .attr("width", width)
     .attr("height", height);
 
-d3.json("../cgi-bin/%i.json", function(error, graph) {
+d3.json("../%i.json", function(error, graph) {
   force
       .nodes(graph.nodes)
       .links(graph.links)
@@ -63,16 +63,26 @@ d3.json("../cgi-bin/%i.json", function(error, graph) {
       .attr("class", "link")
       .style("stroke-width", function(d) { return Math.sqrt(d.value); });
 
-  var node = svg.selectAll(".node")
+  var node = svg.selectAll("a.node")
       .data(graph.nodes)
     .enter().append("circle")
       .attr("class", "noder")
       .attr("r", 5)
       .style("fill", function(d) { return color(d.group); })
-      .call(force.drag);
+      .call(force.drag)
+      .on("click", function(d) { window.location = d.url });
 
   node.append("title")
       .text(function(d) { return d.name; });
+
+/*
+  node.append("svg:a")
+    .attr("xlink:href", function(d){return d.url;})
+    .append("svg:rect")
+    .attr("y", -barHeight / 2)
+    .attr("height", barHeight)
+    .attr("width", barWidth);
+*/
 
   force.on("tick", function() {
     link.attr("x1", function(d) { return d.source.x; })
