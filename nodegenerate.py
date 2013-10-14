@@ -61,16 +61,16 @@ d3.json("../%i.json", function(error, graph) {
       .data(graph.links)
     .enter().append("line")
       .attr("class", "link")
-      .style("stroke-width", function(d) { return Math.sqrt(d.value); });
+      .style("stroke-width", 2);//function(d) { return Math.sqrt(d.value); });
 
   var node = svg.selectAll("a.node")
       .data(graph.nodes)
     .enter().append("circle")
       .attr("class", "noder")
-      .attr("r", 5)
+      .attr("r", function(d) { return Math.sqrt(d.value); })
       .style("fill", function(d) { return color(d.group); })
-      .call(force.drag)
-      .on("click", function(d) { window.location = d.url });
+      .call(force.drag);
+      //      .on("click", function(d) { window.location = d.url });
 
   node.append("title")
       .text(function(d) { return d.name; });
