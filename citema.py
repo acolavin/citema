@@ -9,7 +9,7 @@ import random
 # Main method
 def makeMap(inipmid,levels=2):
 
-    output = map2json(buildMap([inipmid],levels=levels),filename=str(inipmid)+'.json')
+    output = map2json(buildMap([inipmid],levels=levels))
     
     # output json file
     filename = str(inipmid)+'.json'
@@ -20,22 +20,35 @@ def makeMap(inipmid,levels=2):
     return filename
 
 # Output JSON from buildmap output
-def map2json(ids,filename='map.json'):
+def map2json(ids,mincite=1):
     output = {}
-    
-    # build nodes
-    output['nodes'] = []
-    key2ind = []
-    for key in ids.keys():
-        output['nodes'].append({'name':str(key),'group':(ids[key]['level']+1),'url':'http://www.ncbi.nlm.nih.gov/pubmed/'+str(key)})
-        key2ind.append(key)
+    keycount = {}
 
+    for key in ids.keys():
+        keycount[key] = 0
+    
     # build links        
     output['links'] = []
     for key in ids.keys():
         for target in ids[key]['IDs']:
-            output['links'].append({'source': key2ind.index(key),'target': key2ind.index(target),'value':1})
+            keycount[key] += 1
 
+    # build nodes
+    output['nodes'] = []
+    key2ind = []
+    for key in ids.keys():
+        if keycount[key] >= mincite:
+            output['nodes'].append({'name':str(key),'group':(ids[key]['level']+1),'url':'http://www.ncbi.nlm.nih.gov/pubmed/'+str(key),'value': keycount[key]})
+            key2ind.append(key)
+
+
+    for key in ids.keys():
+        for target in ids[key]['IDs']:
+            if keycount[target] >= mincite and keycount[key] >= mincite:
+                output['links'].append({'source': key2ind.index(key),'target': key2ind.index(target),'value': (keycount[key]+keycount[target])})
+
+
+        
     return output
 
 # Returns dictionary of PMID keys and PMIDs values
