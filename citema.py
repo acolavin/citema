@@ -1,13 +1,15 @@
 import numpy as np
-import urllib2
+import urllib
 import xml.etree.ElementTree as ET
 import os
 import json
+import httplib
+import random
 
 # Main method
 def makeMap(inipmid,levels=2):
 
-    output = map2json(buildMap(inipmid,levels),filename=str(inipmid)+'.json')
+    output = map2json(buildMap([inipmid],levels=levels),filename=str(inipmid)+'.json')
     
     # output json file
     filename = str(inipmid)+'.json'
@@ -15,7 +17,7 @@ def makeMap(inipmid,levels=2):
     s.write(json.dumps(output, indent=4, separators=(',', ': ')))
     s.close()
     
-    return None
+    return filename
 
 # Output JSON from buildmap output
 def map2json(ids,filename='map.json'):
@@ -38,50 +40,72 @@ def map2json(ids,filename='map.json'):
 
 # Returns dictionary of PMID keys and PMIDs values
 def buildMap(inipmid,levels=3,ids={}):
-    curIDs = getIDs(inipmid)
-    if inipmid not in ids:
-        ids[inipmid] = {'IDs':curIDs,'level':levels}
-
     if levels > 1:
-        for curID in curIDs:
-            if curID not in ids:
-                ids = buildMap(curID,levels-1,ids)
+        curIDs = getIDs(inipmid)
+        for curpmid in curIDs:
+            if curpmid[0] not in ids:
+                ids[curpmid[0]] = {'IDs':curpmid[1:],'level':levels}
+        curIDs = sum(curIDs, [])
+        curIDs = [item for item in curIDs if item not in ids]
+        ids = buildMap(curIDs,levels=levels-1,ids=ids)
     else:
-        for curID in curIDs:
-            if curID not in ids:
-                ids[curID] = {'IDs':[],'level':levels-1}
+        for curpmid in inipmid:
+            if curpmid not in ids:
+                ids[curpmid] = {'IDs':[],'level':levels}
 
     return ids
+
 # Returns pmids from citation pmid, if any.
 # If none exist, returns None
+# uses POST method
 def getIDs(pmid):
-
+    
     # get local xml from pubmed
     filename = url2xml(pmid)
-
+    
     # find the PMID field
     xmlroot = ET.parse(filename).getroot()
     PMIDs = []
-    for curid in xmlroot.getiterator('PMID'):
-        PMIDs.append(int(curid.text))
-    killfile(filename)
+    
+    # Make list of lists
+    for curid in xmlroot.getiterator('LinkSet'):
+        thislist = [int(curid.find('IdList').find('Id').text)]
+        for linkset in curid.findall('LinkSetDb'):
+            if linkset.find('LinkName').text:
+                if "citedin" in linkset.find('LinkName').text:
+                    for link in linkset.findall('Link'):
+                        thislist.append(int(link.find('Id').text))
+        # now append them
+        PMIDs.append(thislist)
 
+    # Delete that ugly xml file
+    killfile(filename)
     return PMIDs
 
 # Returns URL for pmid pubmed xml file
+# Deprecated Oct 13, 2013
+# All requests go through POST
 def getURL(pmid):
     return 'http://www.ncbi.nlm.nih.gov/pubmed/'+str(pmid)+'?report=xml'
 
-# Makes a local XML file from a URL you to play with,
-# and returns the filename, directory
+# Makes a local XML file by POSTing pmids in e-utils PUBMED,
+# and returns the filename, directory of resultant XML file
 def url2xml(pmid):
-    filehandle = urllib2.urlopen(getURL(pmid))
-    filecontent = urllib2.unquote(filehandle.read())
-    filecontent = filecontent.replace("&lt;", "<")
-    filecontent = filecontent.replace("&gt;", ">")
-    filename = str(pmid)+'.xml'
+    headers = {"Content-type": "application/x-www-form-urlencoded", "Accept":"text/plain"}
+
+    datadict = (('dbfrom','pubmed'),('db','pubmed'))
+    for curid in pmid:
+        datadict = datadict + (('id',curid),)
+                
+    data = urllib.urlencode(datadict)
+                
+    h = httplib.HTTPConnection('eutils.ncbi.nlm.nih.gov')
+    h.request('POST','/entrez/eutils/elink.fcgi',data,headers)
+    f = h.getresponse()
+    
+    filename = '.tmp.'+str(random.randint(0,1000000))+'.xml'
     s = open(filename, 'w')
-    s.write(filecontent)
+    s.write(f.read())
     s.close()
     
     return filename
